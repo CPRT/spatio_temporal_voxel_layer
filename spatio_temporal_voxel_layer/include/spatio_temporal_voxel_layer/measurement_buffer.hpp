@@ -110,6 +110,7 @@ public:
     const bool & enabled,
     const bool & clear_buffer_after_reading,
     const ModelType & model_type,
+    const bool & use_sensor_frame_z,
     rclcpp::Clock::SharedPtr clock,
     rclcpp::Logger logger);
 
@@ -136,6 +137,7 @@ public:
   void SetVerticalFovPadding(const double & vertical_fov_padding);
   void SetHorizontalFovAngle(const double & horizontal_fov_angle);
   void SetVerticalFovAngle(const double & vertical_fov_angle);
+  void SetUseZInSensorFrame(const bool & use_sensor_frame_z);
 
   // State knoweldge if sensors are operating as expected
   bool UpdatedAtExpectedRate(void) const;
@@ -163,7 +165,7 @@ private:
   bool _marking, _clearing;
   Filters _filter;
   int _voxel_min_points;
-  bool _clear_buffer_after_reading, _enabled;
+  bool _clear_buffer_after_reading, _enabled, _use_sensor_frame_z;
   ModelType _model_type;
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Logger logger_;

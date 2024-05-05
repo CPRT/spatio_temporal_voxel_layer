@@ -170,7 +170,7 @@ void SpatioTemporalVoxelLayer::onInitialize(void)
     double min_z, max_z, vFOV, vFOVPadding;
     double hFOV, decay_acceleration, obstacle_range;
     std::string topic, sensor_frame, data_type, filter_str;
-    bool inf_is_valid = false, clearing, marking;
+    bool inf_is_valid = false, clearing, marking, use_sensor_frame_z;
     bool clear_after_reading, enabled;
     int voxel_min_points;
     buffer::Filters filter;
@@ -184,6 +184,9 @@ void SpatioTemporalVoxelLayer::onInitialize(void)
       rclcpp::ParameterValue(std::string("PointCloud2")));
     declareParameter(source + "." + "min_obstacle_height", rclcpp::ParameterValue(0.0));
     declareParameter(source + "." + "max_obstacle_height", rclcpp::ParameterValue(3.0));
+
+    declareParameter(source + "." + "use_sensor_frame_z", rclcpp::ParameterValue(false));  //CPRT added, obstical height judged off of sensor frame
+
     declareParameter(source + "." + "inf_is_valid", rclcpp::ParameterValue(false));
     declareParameter(source + "." + "marking", rclcpp::ParameterValue(true));
     declareParameter(source + "." + "clearing", rclcpp::ParameterValue(false));
@@ -212,6 +215,7 @@ void SpatioTemporalVoxelLayer::onInitialize(void)
     node->get_parameter(name_ + "." + source + "." + "data_type", data_type);
     node->get_parameter(name_ + "." + source + "." + "min_obstacle_height", min_obstacle_height);
     node->get_parameter(name_ + "." + source + "." + "max_obstacle_height", max_obstacle_height);
+    node->get_parameter(name_ + "." + source + "." + "use_sensor_frame_z", use_sensor_frame_z);
     node->get_parameter(name_ + "." + source + "." + "inf_is_valid", inf_is_valid);
     node->get_parameter(name_ + "." + source + "." + "marking", marking);
     node->get_parameter(name_ + "." + source + "." + "clearing", clearing);
@@ -268,7 +272,7 @@ void SpatioTemporalVoxelLayer::onInitialize(void)
           transform_tolerance, min_z, max_z, vFOV, vFOVPadding, hFOV,
           decay_acceleration, marking, clearing, _voxel_size,
           filter, voxel_min_points, enabled, clear_after_reading, model_type,
-          node->get_clock(), node->get_logger())));
+          use_sensor_frame_z, node->get_clock(), node->get_logger())));
 
     // Add buffer to marking observation buffers
     if (marking) {
@@ -934,7 +938,15 @@ SpatioTemporalVoxelLayer::dynamicParametersCallback(std::vector<rclcpp::Paramete
           }
         }
         enabled_ = enable;
-      }
+      } else if (name == name_ + "." + source + "." + "use_sensor_frame_z") {
+          for (auto & buffer : _observation_buffers) {
+            if (buffer->GetSourceName() == source) {
+              buffer->Lock();
+              buffer->SetUseZInSensorFrame(parameter.as_double());
+              buffer->Unlock();
+            }
+          }
+        }
     }
 
     if (type == ParameterType::PARAMETER_INTEGER) {

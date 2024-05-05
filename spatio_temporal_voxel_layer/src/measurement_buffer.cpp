@@ -61,6 +61,7 @@ MeasurementBuffer::MeasurementBuffer(
   const bool & clearing, const double & voxel_size, const Filters & filter,
   const int & voxel_min_points, const bool & enabled,
   const bool & clear_buffer_after_reading, const ModelType & model_type,
+  const bool & use_sensor_frame_z,
   rclcpp::Clock::SharedPtr clock, rclcpp::Logger logger)
 : _buffer(tf),
   _observation_keep_time(rclcpp::Duration::from_seconds(observation_keep_time)),
@@ -75,7 +76,8 @@ MeasurementBuffer::MeasurementBuffer(
   _voxel_size(voxel_size), _marking(marking), _clearing(clearing),
   _filter(filter), _voxel_min_points(voxel_min_points),
   _clear_buffer_after_reading(clear_buffer_after_reading),
-  _enabled(enabled), _model_type(model_type), clock_(clock), logger_(logger)
+  _enabled(enabled), _model_type(model_type), _use_sensor_frame_z(use_sensor_frame_z), 
+  clock_(clock), logger_(logger)
 /*****************************************************************************/
 {
 }
@@ -117,8 +119,11 @@ void MeasurementBuffer::BufferROSCloud(
 
     _observation_list.front()._origin.x = global_pose.pose.position.x;
     _observation_list.front()._origin.y = global_pose.pose.position.y;
-    _observation_list.front()._origin.z = global_pose.pose.position.z;
-
+    if (_use_sensor_frame_z) {
+      _observation_list.front()._origin.z = local_pose.pose.position.z;
+    } else {
+      _observation_list.front()._origin.z = global_pose.pose.position.z;
+    }
     _observation_list.front()._orientation = global_pose.pose.orientation;
     _observation_list.front()._obstacle_range_in_m = _obstacle_range;
     _observation_list.front()._min_z_in_m = _min_z;
@@ -143,6 +148,9 @@ void MeasurementBuffer::BufferROSCloud(
       _buffer.lookupTransform(
       _global_frame, cloud.header.frame_id,
       tf2_ros::fromMsg(cloud.header.stamp));
+    if (_use_sensor_frame_z) {
+      tf_stamped.transform.translation.z = 0;
+    }
     tf2::doTransform(cloud, *cld_global, tf_stamped);
 
     pcl::PCLPointCloud2::Ptr cloud_pcl(new pcl::PCLPointCloud2());
@@ -294,6 +302,13 @@ void MeasurementBuffer::SetMaxObstacleHeight(const double & max_obstacle_height)
 /*****************************************************************************/
 {
   _max_obstacle_height = max_obstacle_height;
+}
+
+/*****************************************************************************/
+void MeasurementBuffer::SetUseZInSensorFrame(const bool & use_sensor_frame_z)
+/*****************************************************************************/
+{
+  _use_sensor_frame_z = use_sensor_frame_z;
 }
 
 /*****************************************************************************/
